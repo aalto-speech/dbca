@@ -1,0 +1,32 @@
+common:
+  output_directory: exp/deprel-europarl-4way-len30/data
+  chunksize: 600000
+
+steps:
+  - type: filter
+    parameters:
+      inputs: [text_common_sents_en.txt]
+      output: text_common_sents_en.filtered_len30.decisions
+      filters:
+        - LengthFilter:
+            unit: word
+            min_length: 1
+            max_length: 30
+
+steps:
+  - type: remove_duplicates
+    parameters:
+      inputs:
+        - text_common_sents_en_len30.txt
+        - text_common_sents_fi_len30.txt
+        - text_common_sents_el_len30.txt
+        - text_common_sents_fr_len30.txt
+        - text_common_sents_de_len30.txt
+      outputs:
+        - text_common_sents_en_len30_fidedupl.txt
+        - text_common_sents_fi_len30_fidedupl.txt
+        - text_common_sents_el_len30_fidedupl.txt
+        - text_common_sents_fr_len30_fidedupl.txt
+        - text_common_sents_de_len30_fidedupl.txt
+      compare: [1]
+      removed_idcs: text_common_sents_len30_fi_dedupl_removed_idcs.txt
