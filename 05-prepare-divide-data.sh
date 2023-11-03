@@ -71,7 +71,7 @@ for boolean_arg in overwrite weight_compounds profile; do
     fi
 done
 
-(set -x; python prepare_divide_data.py $args) || exit 1
+(set -x; python freq_mats.py $args) || exit 1
 
 if [ $stage -eq 6 ]; then
     for filetype in used_sent_ids compounds_per_sent atoms_per_sent subcompounds_per_sent
