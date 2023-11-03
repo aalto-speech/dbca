@@ -1,8 +1,31 @@
-## Code and data for the paper "[Evaluating Morphological Generalisation in Machine Translation by Distribution-Based Compositionality Assessment](https://openreview.net/forum?id=1sGdp5g0NP)"
+# Distribution-based compositionality assessment of natural language corpora
 
+Experiments utilising the *distribution-based compositionality assessment* (DBCA) framework to split natural language corpora into training and test sets in such a way that the test sets require systematic compositional generalisation capacity.
+
+This repository contains experiments described in the two papers:
+- [1] Moisio, Creutz, and Kurimo, "[Evaluating Morphological Generalisation in Machine Translation by Distribution-Based Compositionality Assessment](https://aclanthology.org/2023.nodalida-1.75/)", in *Proceedings of the 24th Nordic Conference on Computational Linguistics (NoDaLiDa)*, pp. 738–751, 2023.
+- [2] Moisio, Creutz, and Kurimo, “On Using Distribution-Based Compositionality Assessment to Evaluate Compositional Generalisation in Machine Translation,” To appear at the GenBench workshop at EMNLP, 2023.
+
+which use the DBCA framework, introduced in the paper:
+- Keysers, Schärli, Scales, Buisman, Furrer, Kashubin, Momchev, Sinopalnikov, Stafiniak, Tihon, Tsarkov, Wang, van Zee, Bousquet, "[Measuring compositional generalization: A comprehensive method on realistic data](https://iclr.cc/virtual_2020/poster_SygcCnNKwr.html)" in *International Conference on Learning Representations*, 2020.
+
+## Instructions
+
+The experiments consist of the following steps:
+
+1. tag a corpus of sentences
+    * [1] uses a morphological tagger
+    * [2] uses a dependency parser
+2. define the *atoms* and *compounds*
+    * atoms can be, for example, lemmas and tags
+    * compounds are combinations of atoms
+3. create matrices that encode the number of atoms and compounds in each sentence
+4. divide the corpus into training and test sets using the greedy algorithm
+5. evaluate NLP models on splits with different compound divergence values
+
+## Experiments in [1]: generalising to novel morphological forms
 ### Structure
-* scripts numbered 01-13 are meant to be run in succession 
-* [run.sh](run.sh) provides examples of running the scripts
+* [run-nodalida2023.sh](run-nodalida2023.sh) includes the commands to run the experiments in [1]
 * [exp/subset-d-1m/data](exp/subset-d-1m/data) contains the 1M sentence pair dataset
 * `exp/subset-d-1m/splits/*/*/*/ids_{train,test_full}.txt.gz` contain the data splits with different compound divergences and different random initialisations
 
@@ -10,6 +33,19 @@
 * Data is from the [Tatoeba Challenge data release](https://github.com/Helsinki-NLP/Tatoeba-Challenge) (eng-fin set)
 * Data filtering is done using [OpusFilter](https://github.com/Helsinki-NLP/OpusFilter)
 * Morphological parsing is done using [TNPP](https://turkunlp.org/Turku-neural-parser-pipeline/), CoNLL-U format parsed using [this parser](https://github.com/EmilStenstrom/conllu)
+* Data split algorithm uses [PyTorch](https://pytorch.org/)
+* Tokenisers are trained using [sentencepiece](https://github.com/google/sentencepiece)
+* Translation systems are trained with [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
+* Evaluating translations is done with [sacreBLEU](https://github.com/mjpost/sacrebleu)
+
+## Experiments in [2]: generalising to novel dependency relations
+### Structure
+* [run-genbench2023.sh](run-genbench2023.sh) includes the commands to run the experiments in [2]
+
+### Dependencies
+* Data is from the [Europarl parallel corpus](https://opus.nlpl.eu/Europarl.php)
+* Data filtering is done using [OpusFilter](https://github.com/Helsinki-NLP/OpusFilter)
+* Dependency parsing is done using [LAL-Parser](https://github.com/KhalilMrini/LAL-Parser)
 * Data split algorithm uses [PyTorch](https://pytorch.org/)
 * Tokenisers are trained using [sentencepiece](https://github.com/google/sentencepiece)
 * Translation systems are trained with [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)

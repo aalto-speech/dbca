@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --time=24:00:00
-#SBATCH --partition dgx-spa,dgx-common,gpu,gpushort
-#SBATCH --mem-per-cpu=8G
+#SBATCH --time=22:00:00
+#SBATCH --partition dgx-spa,dgx-common,gpu,gpushort,gpu-nvlink
+#SBATCH --mem-per-cpu=4G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=volta
 #SBATCH --job-name=onmt_train
@@ -14,6 +14,7 @@ vocab_size_src=$4
 vocab_size_tgt=$5
 datadir=$6
 tok_method=$7
+continue_from=$8
 if [ -z "$exp_name" ] || [ -z "$src_lang" ] || [ -z "$tgt_lang" ] || \
     [ -z "$vocab_size_src" ] || [ -z "$vocab_size_tgt" ] || [ -z "$datadir" ] || \
     [ -z "$tok_method" ]; then
@@ -34,7 +35,7 @@ if [ -z "$continue_from" ]; then
     (set -x; onmt_train -config "$nmt_config_file" -early_stopping 3)  || exit 1
 else
     echo "Continuing from step ${continue_from}"
-    (set -x; onmt_train -config "$nmt_config_file" -early_stopping 3 \
+    (set -x; onmt_train -config "$nmt_config_file" \
         -train_from "${nmt_dir}/model_step_${continue_from}.pt") || exit 1
 fi
 

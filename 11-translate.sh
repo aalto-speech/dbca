@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --time=04:00:00
-#SBATCH --partition dgx-spa,dgx-common,gpu,gpushort
-#SBATCH --mem-per-cpu=4G
+#SBATCH --time=00:35:00
+#SBATCH --partition dgx-spa,dgx-common,gpu,gpushort,gpu-nvlink
+#SBATCH --mem-per-cpu=3G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=volta
 #SBATCH --job-name=onmt_translate
@@ -13,12 +13,14 @@ src_lang=$3
 tgt_lang=$4
 vocab_size_src=$5
 vocab_size_tgt=$6
-opustest=$7
+tok_method=$7
+opustest=$8
+model_cp=$9
 if [ -z "$exp_name" ] || [ -z "$datadir" ] || [ -z "$src_lang" ] \
     || [ -z "$tgt_lang" ] || [ -z "$vocab_size_src" ] \
-    || [ -z "$vocab_size_tgt" ]; then
+    || [ -z "$vocab_size_tgt" ] || [ -z "$tok_method" ]; then
     echo "Usage: $0 <exp_name> <datadir> <src_lang> <tgt_lang>"
-    echo "  <vocab_size_src> <vocab_size_tgt> [<opustest>]"
+    echo "  <vocab_size_src> <vocab_size_tgt> <tok_method> [<opustest>] [<model_cp>]"
     exit 1
 fi
 . ./exp/${exp_name}/config.sh
@@ -28,8 +30,8 @@ tok_model="${tok_dir}/${src_lang}.model"
 nmt_name="${src_lang}-${tgt_lang}_${tok_method}_vocabs_${vocab_size_src}_${vocab_size_tgt}"
 nmt_dir="${datadir}/nmt-${nmt_name}"
 
-./utils/get-best-onmt-model-cp.sh "$nmt_dir" || exit 1
-model_cp=$(cat $nmt_dir/best_model_cp.txt)
+# ./utils/get-best-onmt-model-cp.sh "$nmt_dir" || exit 1
+# model_cp=$(cat $nmt_dir/best_model_cp.txt)
 
 echo "exp_name: $exp_name"
 echo "datadir: $datadir"

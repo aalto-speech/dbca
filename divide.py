@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 #spellcheck-off
 """
-Divide a corpus into training and test sets.
-Before this script, we have selected some subset of lemmas and morph combinations
-that we analyse, and in this script we divide the data so that train and test sets:
-    * have the same distribution of lemmas (minimise atom divergence)
-    * and the same distribution of morph tags (minimise atom divergence)
-    * but different distribution of the combinations of these two (maximise (or
-      set to some other specified value) compound divergence)
+Divide a corpus into training and test sets so that the atom and compound divergences
+are set to desired values. Before this script, the data has been converted to atom and
+compound frequency matrices.
 """
 from os import path, makedirs
 import argparse
@@ -135,12 +131,15 @@ class DivideTrainTest:
     that define the actual algorithm in the divide_corpus() method."""
     def __init__(self,
         data_dir=".",
+        group_size=1,
         subsample_size=None,
         subsample_iter=None,
+        presplit_train_test=None,
     ):
+        self.group_size = group_size
         self._read_data(data_dir)
         self.n_samples = len(self.sent_ids)
-        print(f'Size of corpus: {self.n_samples} sentences.')
+        print(f'Size of corpus: {self.n_samples} rows.')
 
         if subsample_size is not None:
             if subsample_size < subsample_iter:
@@ -170,7 +169,7 @@ class DivideTrainTest:
         # 2 matrices: one for each set
         self.candidate_com_sums = torch.zeros((2, self.n_matrix_rows, self.com_dim), device=device)
         self.candidate_atom_sums = torch.zeros((2, self.n_matrix_rows, self.atom_dim),
-                                               device=device)
+                                            device=device)
 
         # keep unnormalised vectors as separate variables to enable updating
         self.subset_com_freq_sum = torch.zeros((2, self.com_dim), device=device)
@@ -179,8 +178,43 @@ class DivideTrainTest:
         # init subset indices in the discard set
         self.subset_indices = torch.zeros(self.n_samples, device=device) + DISCARD_SET
 
+        # TODO: lose the matrices on CPU and use only the GPU ones
+        # move the full matrices to the GPU (if available)
+        self.com_freq_matrix = self.com_freq_matrix_full.clone().detach().to(device)
+        self.atom_freq_matrix = self.atom_freq_matrix_full.clone().detach().to(device)
+
+        self.presplit_train_test = presplit_train_test
+        if self.presplit_train_test:
+            self._read_presplit_files(
+                load_struct(path.join(self.presplit_train_test, 'train.txt')),
+                load_struct(path.join(self.presplit_train_test, 'test.txt')))
+        else:
+            self.presplit_train_test = None
+
+    def _read_presplit_files(self, train_set, test_set) -> None:
+        """Read the pre-split train and test sets from files."""
+        print('Reading pre-split train and test sets...')
+        train_set_idxs = [self.sent_ids_inv[sent] for sent in train_set]
+        test_set_idxs = [self.sent_ids_inv[sent] for sent in test_set]
+        for idx in train_set_idxs:
+            self.subset_indices[idx] = TRAIN_SET
+        for idx in test_set_idxs:
+            self.subset_indices[idx] = TEST_SET
+
+        train_set = torch.tensor(train_set_idxs, device=device)
+        test_set = torch.tensor(test_set_idxs, device=device)
+
+        self.subset_com_freq_sum[TRAIN_SET] = torch.sparse.sum(
+            self.com_freq_matrix.index_select(0, train_set), 0).to_dense()
+        self.subset_atom_freq_sum[TRAIN_SET] = torch.sparse.sum(
+            self.atom_freq_matrix.index_select(0, train_set), 0).to_dense()
+        self.subset_com_freq_sum[TEST_SET] = torch.sparse.sum(
+            self.com_freq_matrix.index_select(0, test_set), 0).to_dense()
+        self.subset_atom_freq_sum[TEST_SET] = torch.sparse.sum(
+            self.atom_freq_matrix.index_select(0, test_set), 0).to_dense()
+
     def _read_data(self, data_dir: str) -> None:
-        group_suffix = ''
+        group_suffix = '' if self.group_size == 1 else f'_group{self.group_size}'
         print('Reading data from files...')
         self.atom_freq_matrix_full = torch.load(
             path.join(data_dir, f'atom_freqs{group_suffix}.pt'),
@@ -191,13 +225,20 @@ class DivideTrainTest:
         self.atom_ids = load_struct(path.join(data_dir, 'atom_ids.pkl'))
         self.com_ids = load_struct(path.join(data_dir, 'com_ids.pkl'))
         self.sent_ids = load_struct(path.join(data_dir, f'used_sent_ids{group_suffix}.txt'))
+        self.sent_ids_inv = {sent_id: idx for idx, sent_id in enumerate(self.sent_ids)}
         print('Done reading data.')
 
     def write_ids_to_file(self, set_ids, set_output):
         """Write the ids of the sentences in the set to a file."""
-        with open(set_output, 'w', encoding='utf-8') as f:
-            for sent_id in set_ids:
-                f.write(f'{sent_id}\n')
+        if self.group_size == 1:
+            with open(set_output, 'w', encoding='utf-8') as f:
+                for sent_id in set_ids:
+                    f.write(f'{sent_id}\n')
+        else:
+            with open(set_output, 'w', encoding='utf-8') as f:
+                for group in set_ids:
+                    for sent_id in group:
+                        f.write(f'{sent_id}\n')
 
     def print_subset_atoms_and_compounds(self, print_all=False, separate=True):
         """Print the number of atoms and compounds in the train and test sets."""
@@ -252,22 +293,19 @@ class FromEmptySets(DivideTrainTest):
         super().__init__(**kwargs)
         print('Initialising the matrices...')
 
-        # TODO: lose the matrices on CPU and use only the GPU ones
-
-        # move the full matrices to the GPU (if available)
-        self.com_freq_matrix = self.com_freq_matrix_full.clone().detach().to(device)
-        self.atom_freq_matrix = self.atom_freq_matrix_full.clone().detach().to(device)
-
         # used_ids_mask contains -inf for sentences that are used, 0 otherwise
         self.used_ids_mask = torch.zeros(self.n_matrix_rows, device=device)
 
-        # initialise the random subsample indices
-        self.random_idxs, _, _ =  self._get_random_subsample(DISCARD_SET)
+        if self.presplit_train_test is None:
+            # initialise the random subsample indices
+            self.random_idxs, _, _ =  self._get_random_subsample(DISCARD_SET)
 
-        # initialize train set with one random sample
-        self._add_sample_to_set(TRAIN_SET, random.randrange(self.n_matrix_rows))
+            # initialize train set with one random sample
+            self._add_sample_to_set(TRAIN_SET, random.randrange(self.n_matrix_rows))
 
-        print('Initialisation done. Initialised the train set with one random sentence.')
+            print('Initialisation done. Initialised the train set with one random sentence.')
+        else:
+            self._subsample(DISCARD_SET, [TRAIN_SET, TEST_SET])
 
     def _get_random_subsample(self, subset_id):
         """Take a random subsample of the sentences in the given subset."""
@@ -339,7 +377,26 @@ class FromEmptySets(DivideTrainTest):
             self.subset_com_freq_sum[the_other_set_id], com_alpha)
         return atom_div_add_to_subset, com_div_add_to_subset
 
+    def _move_a_sample(self, from_set, to_set, randoms_atom, randoms_com):
+        """Selects the sample that maximises the score when moved from one set to another,
+        and moves them."""
+        candidate_com_sums_from = self.subset_com_freq_sum[from_set] - randoms_com
+        candidate_com_sums_to = self.subset_com_freq_sum[to_set] + randoms_com
+        candidate_atom_sums_from = self.subset_atom_freq_sum[from_set] - randoms_atom
+        candidate_atom_sums_to = self.subset_atom_freq_sum[to_set] + randoms_atom
+
+        # 0.9 if test set is the first argument to chernoff_coef()
+        com_alpha = 0.1 if from_set == TRAIN_SET else 0.9
+        atom_divs = mat_mat_divergence(candidate_atom_sums_from, candidate_atom_sums_to, 0.5)
+        com_divs = mat_mat_divergence(candidate_com_sums_from, candidate_com_sums_to, com_alpha)
+        best_cand = self._best_sentence(atom_divs, com_divs)
+
+        if best_cand['score'] > get_scores(*self.get_divergences(), self.target_atom_div,
+                                           self.target_com_div):
+            self._add_sample_to_set(to_set, best_cand['idx'], from_set=from_set)
+
     def divide_corpus(self,
+        target_atom_div=0.0,
         target_com_div=1.0,
         min_test_percent=0.05,
         max_test_percent=0.3,
@@ -348,21 +405,31 @@ class FromEmptySets(DivideTrainTest):
         print_every=10000,
         save_cp=100000,
         output_dir=".",
+        move_a_sample_iter=-1,
     ):
         """Divide data into train and test sets. At each iteration, select the sample from
         sample_matrix that maximises the score."""
 
+        self.target_atom_div = target_atom_div
         self.target_com_div = target_com_div
-        self.target_atom_div = 0.0
 
-        if select_n_samples is None or select_n_samples > self.n_samples - self.subsample_size:
+        remaining_size = self.get_subset_indices(DISCARD_SET).size()[0]
+        if select_n_samples is None or select_n_samples > remaining_size - self.subsample_size:
             print('Warning: using all samples in corpus.')
             # not using the last, incomplete subsample
             # TODO: fix this to use all sentences
             if self.do_subsample:
-                select_n_samples = self.n_samples - self.subsample_size
+                select_n_samples = remaining_size - self.subsample_size
             else:
-                select_n_samples = self.n_samples - 1
+                select_n_samples = remaining_size - 1
+
+        # reduce the intervals in proportion to the group size
+        if print_every > self.group_size:
+            print_every = print_every // self.group_size
+        if save_cp > self.group_size:
+            save_cp = save_cp // self.group_size
+        if max_iters and max_iters > self.group_size:
+            max_iters = max_iters // self.group_size
 
         best_values = {}
         train_size = 0
@@ -385,8 +452,9 @@ class FromEmptySets(DivideTrainTest):
 
         print('Starting division. ' + \
             f'Train set size: {self.get_subset_indices(TRAIN_SET).size()[0]}, ' + \
-            f'Test set size: {self.get_subset_indices(TEST_SET).size()[0]}.')
-        print(f'Dividing {select_n_samples} sentences...')
+            f'Test set size: {self.get_subset_indices(TEST_SET).size()[0]}. ' + \
+            f'Remaining samples: {select_n_samples}.')
+        print(f'Dividing {select_n_samples} samples.')
         for i in tqdm(range(select_n_samples)):
             train_size = self.get_subset_indices(TRAIN_SET).size()[0]
             test_size  = self.get_subset_indices(TEST_SET).size()[0]
@@ -412,7 +480,13 @@ class FromEmptySets(DivideTrainTest):
             selected_idx = best_values[selected_set]['idx']
             self._add_sample_to_set(selected_set, selected_idx)
 
-            if self.do_subsample and i % self.subsample_iter == 0:
+            if i % move_a_sample_iter == 0 and move_a_sample_iter > 0 and i > 10:
+                self.random_idxs, random_atom, random_com = self._get_random_subsample(TRAIN_SET)
+                self._move_a_sample(TRAIN_SET, TEST_SET, random_atom, random_com)
+                self.random_idxs, random_atom, random_com = self._get_random_subsample(TEST_SET)
+                self._move_a_sample(TEST_SET, TRAIN_SET, random_atom, random_com)
+                self._subsample(DISCARD_SET, [TRAIN_SET, TEST_SET])
+            elif self.do_subsample and i % self.subsample_iter == 0:
                 self._subsample(DISCARD_SET, [TRAIN_SET, TEST_SET])
             else:
                 self.candidate_com_sums[selected_set] += \
@@ -431,11 +505,15 @@ class FromEmptySets(DivideTrainTest):
         _print_iteration()
         _save_division()
 
+
 def create_parser():
     """Create the argument parser."""
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--data-dir", type=str, default=None,
         help="Path to the directory containing the data files.")
+    arg_parser.add_argument("--algorithm", type=str, default='greedy',
+        choices=['greedy', 'sa', 'greedy_from_random_divide'],
+        help="Algorithm to use for splitting the corpus.")
     arg_parser.add_argument("--min-test-percent", type=float, default=0.05,
         help="Minimum ratio of test set size to train set size.")
     arg_parser.add_argument("--max-test-percent", type=float, default=0.3,
@@ -443,8 +521,16 @@ def create_parser():
     arg_parser.add_argument("--subsample-size", type=int, default=None)
     arg_parser.add_argument("--subsample-iter", type=int, default=None,
         help="Subsample set every n iterations.")
-    arg_parser.add_argument("--compound-divergences", nargs="*",
-        type=float, default=[1.0])
+    arg_parser.add_argument("--move-a-sample-iter", type=int, default=20,
+        help="Move a sample from test set to train, and vice versa, every n iterations.")
+    arg_parser.add_argument("--group-size", type=int, default=None,
+        help="Group sentences to reduce the number of rows in the matrices.")
+    arg_parser.add_argument("--move-n", type=int, default=1,
+        help="Number of sentences to move at each iteration.")
+    arg_parser.add_argument("--atom-divergence", type=float, default=0.0)
+    arg_parser.add_argument("--compound-divergence", type=float, default=1.0)
+    arg_parser.add_argument("--presplit-train-test", default=None, type=str,
+        help="Dir containing train and test sets to initialise the split.")
     arg_parser.add_argument("--leave-out", type=float, default=0.0)
     arg_parser.add_argument("--max-iters", type=int, default=None)
     arg_parser.add_argument("--random-seed", type=int, default=1234)
@@ -459,37 +545,54 @@ def launch_from_empty_sets(args):
         data_dir=args.data_dir,
         subsample_size=args.subsample_size,
         subsample_iter=args.subsample_iter,
+        group_size=args.group_size,
+        presplit_train_test=args.presplit_train_test,
     )
 
+    if args.presplit_train_test:
+        presplit = 'yes'
+    else:
+        presplit = 'no'
+
     use_n_samples = int((1 - args.leave_out) * divide_train_test.n_samples) - 1
-    for compound_div in args.compound_divergences:
-        output_dir_name = f'{args.data_dir}/comdiv{compound_div}' \
-            + f'_seed{args.random_seed}' \
-            + f'_subsample{args.subsample_size}every{args.subsample_iter}iters' \
-            + f'_testsize{args.min_test_percent}to{args.max_test_percent}' \
-            + f'_leaveout{args.leave_out}'
-        if path.isdir(output_dir_name):
-            sys.exit('Output directory already exists. Exiting.')
-        makedirs(output_dir_name)
 
-        print('Dividing the corpus, writing to', output_dir_name)
-        divide_train_test.divide_corpus(
-            target_com_div=compound_div,
-            min_test_percent=args.min_test_percent,
-            max_test_percent=args.max_test_percent,
-            select_n_samples=use_n_samples,
-            print_every=args.print_every,
-            max_iters=args.max_iters,
-            save_cp=args.save_cp,
-            output_dir=output_dir_name,
-            )
+    output_dir_name = f'{args.data_dir}/comdiv{args.compound_divergence}' \
+        + f'_atomdiv{args.atom_divergence}' \
+        + f'_seed{args.random_seed}' \
+        + f'_subsample{args.subsample_size}every{args.subsample_iter}iters' \
+        + f'_groupsize{args.group_size}' \
+        + f'_testsize{args.min_test_percent}to{args.max_test_percent}' \
+        + f'_leaveout{args.leave_out}' \
+        + f'_moveasampleevery{args.move_a_sample_iter}iters' \
+        + f'_presplit{presplit}'
+    if path.isdir(output_dir_name):
+        # sys.exit('Output directory already exists. Exiting.')
+        output_dir_name += '_resumed'
+    makedirs(output_dir_name)
 
-        divide_train_test.print_subset_atoms_and_compounds()
+    if args.presplit_train_test:
+        with open(output_dir_name + '/presplit_train_test.txt', 'w', encoding='utf-8') as f:
+            f.write(args.presplit_train_test)
+
+    print('Dividing the corpus, writing to', output_dir_name)
+    divide_train_test.divide_corpus(
+        target_atom_div=args.atom_divergence,
+        target_com_div=args.compound_divergence,
+        min_test_percent=args.min_test_percent,
+        max_test_percent=args.max_test_percent,
+        select_n_samples=use_n_samples,
+        print_every=args.print_every,
+        max_iters=args.max_iters,
+        save_cp=args.save_cp,
+        output_dir=output_dir_name,
+        move_a_sample_iter=args.move_a_sample_iter,
+        )
+
+    divide_train_test.print_subset_atoms_and_compounds()
 
 def main():
     args = create_parser().parse_args()
     random.seed(args.random_seed)
-
     launch_from_empty_sets(args)
 
 if __name__ == "__main__":

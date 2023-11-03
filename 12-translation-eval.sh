@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --time=01:00:00
-#SBATCH --mem-per-cpu=18G
+#SBATCH --time=00:20:00
+#SBATCH --mem-per-cpu=4G
 #SBATCH --job-name=eval_sent
 #SBATCH --output=log/%x_%j.out
 
@@ -11,12 +11,13 @@ tgt_lang=$4
 vocab_size_src=$5
 vocab_size_tgt=$6
 model_cp=$7
-opus_test=$8
+tok_method=$8
+opus_test=$9
 if [ -z "$exp_name" ] || [ -z "$datadir" ] || [ -z "$src_lang" ] || \
     [ -z "$tgt_lang" ] || [ -z "$vocab_size_src" ] || [ -z "$vocab_size_tgt" ] \
-    || [ -z "$model_cp" ] || [ -z "$opus_test" ]; then
+    || [ -z "$model_cp" ] || [ -z "$tok_method" ] || [ -z "$opus_test" ]; then
     echo "Usage: $0 <exp_name> <datadir> <src_lang> <tgt_lang> \\"
-    echo "   <vocab_size_src> <vocab_size_tgt> <model_cp> <opus_test>"
+    echo "   <vocab_size_src> <vocab_size_tgt> <model_cp> <tok_method> <opus_test>"
     exit 1
 fi
 . ./exp/${exp_name}/config.sh
@@ -56,27 +57,21 @@ if [ ! -f "${pred_target%.txt}.detok" ]; then
         "${pred_target}" \
         "${pred_target%.txt}.detok" \
         --parse-aligned \
-        --desubword-hyp) || exit 1
+        --desubword-spm-format) || exit 1
 fi
+
+confidence=
+confidence_suffix=
+# confidence="--confidence --confidence-n 3000"
+# confidence_suffix=".confidence"
 
 (set -x; sacrebleu \
     "$ref_target" \
     --width 4 \
     --input "${pred_target%.txt}.detok" \
     --metrics bleu chrf --chrf-word-order 2 \
-    --confidence --confidence-n 3000 \
-    > "${pred_target%.txt}.bleu.chrf2.confidence") || exit 1
-
-# (set -x; comet-score --quiet \
-#     -s "$ref_source" \
-#     -r "$ref_target" \
-#     -t "${pred_target%.txt}.detok")
-
-# (set -x; python utils/evaluate_translations.py \
-#     "${ref_target}" \
-#     "${pred_target%.txt}.detok" \
-#     --output "${pred_target%.txt}.${metric}" \
-#     --metric "$metric") || exit 1
+    $confidence \
+    > "${pred_target%.txt}.bleu.chrf2${confidence_suffix}") || exit 1
 
 if [ -f "log/${SLURM_JOB_NAME}_${SLURM_JOB_ID}.out" ]; then
     sleep 20

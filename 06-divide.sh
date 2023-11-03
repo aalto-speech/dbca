@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=34:00:00
+#SBATCH --time=4:00:00
 #SBATCH --partition dgx-spa,gpu,dgx-common
 #SBATCH --mem=8G
 #SBATCH --gres=gpu:1
@@ -9,10 +9,11 @@
 
 exp_name=$1
 data_dir=$2
-comdiv=$3
-random_seed=$4
-if [ -z "$exp_name" ] || [ -z "$data_dir" ] || [ -z "$comdiv" ]; then
-    echo "Usage: $0 <exp_name> <data_dir> <comdiv> [<random_seed>]"
+atomdiv=$3
+comdiv=$4
+random_seed=$5
+if [ -z "$exp_name" ] || [ -z "$data_dir" ]  || [ -z "$atomdiv" ] || [ -z "$comdiv" ]; then
+    echo "Usage: $0 <exp_name> <data_dir> <atomdiv> <comdiv> [<random_seed>]"
     exit 1
 fi
 . ./exp/${exp_name}/config.sh
@@ -27,11 +28,15 @@ fi
     --max-test-percent $max_test_percent \
     --subsample-size $subsample_size \
     --subsample-iter $subsample_iter \
+    --group-size $group_size \
+    --move-n $move_n \
+    --move-a-sample-iter $move_a_sample_iter \
     --max-iters $max_iters \
     --save-cp $save_cp \
     --print-every $print_every \
     --random-seed $random_seed \
-    --compound-divergences $comdiv) || exit 1
+    --atom-divergence $atomdiv \
+    --compound-divergence $comdiv) || exit 1
 
 if [ -f log/${SLURM_JOB_NAME}_${SLURM_JOB_ID}.out ]; then
     sleep 10

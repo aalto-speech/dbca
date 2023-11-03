@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --time=8:00:00
-#SBATCH --mem=32G
+#SBATCH --time=2:00:00
+#SBATCH --mem=2G
 #SBATCH --job-name=train_spm
 #SBATCH --output=log/%x_%j.out
 
@@ -10,10 +10,12 @@ tgt_lang=$3
 vocab_size_src=$4
 vocab_size_tgt=$5
 datadir=$6
+tok_method=$7
 if [ -z "$exp_name" ] || [ -z "$src_lang" ] || [ -z "$tgt_lang" ] || \
-    [ -z "$vocab_size_src" ] || [ -z "$vocab_size_tgt" ] || [ -z "$datadir" ]; then
+    [ -z "$vocab_size_src" ] || [ -z "$vocab_size_tgt" ] || \
+    [ -z "$datadir" ] || [ -z "$tok_method" ]; then
     echo "Usage: $0 <exp_name> <src_lang> <tgt_lang> <vocab_size_src>"
-    echo "      <vocab_size_tgt> <datadir>"
+    echo "      <vocab_size_tgt> <datadir> <tok_method>"
     exit 1
 fi
 . ./exp/${exp_name}/config.sh

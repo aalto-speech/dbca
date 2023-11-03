@@ -3,7 +3,6 @@
 #SBATCH --mem=24G
 #SBATCH --job-name=insert_ids
 #SBATCH --output=log/%x_%j.out
-#SBATCH --dependency=afterok:7622710
 
 exp_name=$1
 if [ -z "$exp_name" ]; then
