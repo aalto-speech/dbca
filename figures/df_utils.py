@@ -27,6 +27,17 @@ def parse_result_file(f, result_type='confidence'):
         results = {}
         results['BLEU'] = json_obj['score']
         return results
+    elif result_type == 'chrf2':
+        # the format in test_pred_cp*_full.bleu.chrf2.confidence
+        with open(f.name, 'r', encoding='utf-8') as f:
+            try:
+                json_obj = json.load(f)
+            except:
+                print(f.name)
+        results = {}
+        results['BLEU'] = json_obj[0]['score']
+        results['chrF2++'] = json_obj[1]['score']
+        return results
     elif result_type == 'confidence':
         # the format in test_pred_cp*_full.bleu.chrf2.confidence
         with open(f.name, 'r', encoding='utf-8') as f:
@@ -79,6 +90,66 @@ def parse_nmt_filename(filename):
         pass
     return filename_dict
 
+def parse_nmt_filename_genbench(filename):
+    filename_dict = {}
+    try:
+        filename_dict['Compound divergence'] = float(re.search(
+            r'comdiv(.+?)[_/]', filename).group(1))
+    except AttributeError:
+        filename_dict['Compound divergence'] = 'Random split'
+        filename_dict['seed'] = re.search(r'random_210000_30000_(.+?)[_/]', filename).group(1)
+
+    filename_dict['Tok method src'] = re.search(
+        r'_vocabs_(\w+?)\d', filename).group(1).split('_')[0]
+
+    if filename_dict['Tok method src'] not in  ['goldstd', 'goldstdmorphemes']:
+        filename_dict['Vocab size src'] = int(re.search(
+            f'_vocabs_' + str(filename_dict['Tok method src']) + r'(\d+?)_',
+            filename).group(1).split('_')[0])
+
+    filename_dict['Tok method tgt'] = re.search(
+        f"_vocabs_{filename_dict['Tok method src']}" + r'\d*_(\w+?)\d',
+        filename).group(1).split('_')[0]
+
+    src_vocab_size = ''
+    if 'Vocab size src' in filename_dict:
+        src_vocab_size = str(filename_dict['Vocab size src'])
+    
+    try:
+        filename_dict['Vocab size tgt'] = int(re.search(
+            f'_vocabs_{filename_dict["Tok method src"]}' + \
+            src_vocab_size + \
+            f'_{filename_dict["Tok method tgt"]}' + r'(\d+?)\/',
+            filename).group(1).split('_')[0])
+    except AttributeError:
+        pass
+
+    try:
+        filename_dict['reduction'] = re.search(r'\d+of\d+\.(\w+?)_', filename).group(1)
+        filename_dict['item_type'] = re.search(f'{filename_dict["reduction"]}' + r'_(\w+?)_freqs',
+                                               filename).group(1)
+        filename_dict['freq_bin'] = re.search(r'\.(\d+?)of\d',filename).group(1)
+        filename_dict['freq_bin_total'] = re.search(r'\.\d+of(\d+?)\.',filename).group(1)
+        filename_dict['freq_range_min'] = float(re.search(r'_freqs(.*?)to', filename).group(1))
+        filename_dict['freq_range_max'] = float(re.search(r'_freqs.*to(.*?)\.', filename).group(1))
+    except AttributeError:
+        pass
+
+    try:
+        filename_dict['seed'] = re.search("_seed(.+?)_", filename).group(1)
+    except AttributeError:
+        pass
+
+    try:
+        filename_dict['Tokenisation method'] = re.search(r"_(\w+?)_vocabs",
+                                                         filename).group(1)
+    except AttributeError:
+        pass
+    
+    filename_dict['Training steps'] = float(re.search("test_pred_cp(.+?)_", filename).group(1))
+    filename_dict['tgt_lang'] = re.search("nmt-en-(.+?)_", filename).group(1)
+    return filename_dict
+
 
 def parse_tokeniser_filename(filename):
     filename_dict = {}
@@ -107,6 +178,9 @@ def read_result_files(filenames, result_type='confidence'):
             yield filename_dict, results
         elif result_type == 'bleu':
             filename_dict = parse_nmt_filename(filename)
+            yield filename_dict, results
+        elif result_type == 'chrf2':
+            filename_dict = parse_nmt_filename_genbench(filename)
             yield filename_dict, results
         elif result_type == 'hutmegs':
             filename_dict = parse_tokeniser_filename(filename)
@@ -139,6 +213,13 @@ def result_files_to_df(filenames, result_type='confidence'):
         df = pd.DataFrame()
         for filename_dict, results in read_result_files(filenames, result_type=result_type):
             df = df.append({**filename_dict, 'BLEU': results['BLEU'],
+                },
+                ignore_index=True)
+        return df
+    elif result_type == 'chrf2':
+        df = pd.DataFrame()
+        for filename_dict, results in read_result_files(filenames, result_type=result_type):
+            df = df.append({**filename_dict, 'BLEU': results['BLEU'], 'chrF2++': results['chrF2++'],
                 },
                 ignore_index=True)
         return df

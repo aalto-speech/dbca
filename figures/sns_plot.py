@@ -63,6 +63,105 @@ def subplot_seeds():
     fig.set_size_inches(11, 17) # 4 rows of 2
     fig.savefig(args.output, dpi=400, bbox_inches = 'tight')
 
+
+def genbench():
+    """ Figure in the GenBench2023 paper """
+    import pandas as pd
+    map_langs = {
+        'de': 'German',
+        'fr': 'French',
+        'el': 'Greek',
+        'fi': 'Finnish',
+    }
+    df = result_files_to_df(args.result_files, result_type='chrf2')
+    print(df.to_string())
+
+    seed_map = {'1': '11', '2': '22', '3': '33'}
+    new_df = pd.DataFrame(columns=['tgt_lang', 'seed', 'Compound divergence', 'BLEU'])
+    for lang in ['de', 'fr', 'el', 'fi']:
+        for seed in ['1', '2', '3']:
+            random_split = df[df["tgt_lang"] == str(lang)]
+            random_split = random_split[random_split["seed"] == str(seed)]
+            random_split = random_split[random_split["Compound divergence"] == 'Random split']
+            # print(random_split.to_string())
+            # get best BLEU of all Training steps
+            # best_bleu = random_split['BLEU'].max()
+            
+            best_bleu = random_split['chrF2++'].max()
+            new_df = new_df.append({'tgt_lang': lang, 'seed': seed_map[seed],
+                                    'Compound divergence': 0.5,
+                                    # 'BLEU': best_bleu},
+                                    'chrF2++': best_bleu},
+                                    ignore_index=True)
+        for seed in ['11', '22', '33']:
+            for cd in [0.0, 1.0]:
+                sub_df = df[df["tgt_lang"] == str(lang)]
+                sub_df = sub_df[sub_df["seed"] == str(seed)]
+                sub_df = sub_df[sub_df["Compound divergence"] == cd]
+                # print(sub_df.to_string())
+                # get best BLEU of all Training steps
+                # best_bleu = sub_df['BLEU'].max()
+                best_bleu = sub_df['chrF2++'].max()
+                print(f'Best BLEU for {lang}, {seed}, {cd}: {best_bleu}')
+                new_df = new_df.append({'tgt_lang': lang, 'seed': seed,
+                                        'Compound divergence': cd,
+                                        # 'BLEU': best_bleu},
+                                        'chrF2++': best_bleu},
+                                        ignore_index=True)
+    # avg bleu across seeds
+    # new_df = new_df.groupby(['tgt_lang', 'Compound divergence']).mean()
+    # print(new_df.to_string())
+    
+    # print(new_df.to_string())
+    # new_df = new_df.drop(['BLEU'], axis=1)
+    # print(new_df.to_string())
+    
+    
+    # df_chrf = new_df.pivot(index=['tgt_lang', 'seed'],
+    #                 columns='Compound divergence',
+    #                 values=['chrF2++'])
+    # print(df_chrf.to_string())
+    # print(df_chrf.to_latex())
+    
+    
+    langs = [['de', 'fr', 'el', 'fi']]
+    n_rows = len(langs)
+    n_cols = len(langs[0])
+    sns.set_theme(style="white")
+    fig, axes = plt.subplots(n_rows, n_cols)
+    
+    for row in range(n_rows):
+        for col in range(n_cols):
+            lang = langs[row][col]
+            # for seed in ['11', '22']:
+            sub_df = new_df[new_df["tgt_lang"] == str(lang)]
+            # sub_df = sub_df[sub_df["Compound divergence"] != 'Random split']
+            relplot = sns.scatterplot(
+                data=sub_df,
+                # x='Training steps',
+                # y="BLEU",
+                y="chrF2++",
+                x="Compound divergence",
+                # style='seed',
+                palette='deep',
+                ax=axes[col],
+            )
+            relplot.set(title=f'Target lang: {map_langs[lang]}')
+    
+            # set x range
+            axes[col].set_xlim([-0.25, 1.25])
+            # set x tics
+            xlabels = ['0.0', 'Random split', '1.0']
+            axes[col].set_xticks([0.0, 0.5, 1.0])
+            fig.axes[col].set_xticklabels(xlabels)
+    
+    # remove y axis label
+    for col in [1,2,3]:
+        axes[col].set_ylabel('')
+            
+    fig.set_size_inches(15, 3)
+    fig.savefig(args.output, dpi=400, bbox_inches = 'tight')
+
 if __name__ == '__main__':
     import argparse
     from df_utils import result_files_to_df
@@ -81,5 +180,7 @@ if __name__ == '__main__':
         all_vocabs()
     elif args.type == 'subplot_seeds':
         subplot_seeds()
+    elif args.type == 'genbench':
+        genbench()
     else:
         raise ValueError('Unknown type: ' + args.type)

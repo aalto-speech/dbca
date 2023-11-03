@@ -23,30 +23,24 @@ The experiments consist of the following steps:
 4. divide the corpus into training and test sets using the greedy algorithm
 5. evaluate NLP models on splits with different compound divergence values
 
+
+## Dependencies
+* Data in [1] is from the [Tatoeba Challenge data release](https://github.com/Helsinki-NLP/Tatoeba-Challenge) (eng-fin set)
+* Data in [2] is from the [Europarl parallel corpus](https://opus.nlpl.eu/Europarl.php)
+* Data filtering is done using [OpusFilter](https://github.com/Helsinki-NLP/OpusFilter)
+* Morphological parsing in [1] is done using [TNPP](https://turkunlp.org/Turku-neural-parser-pipeline/), CoNLL-U format parsed using [this parser](https://github.com/EmilStenstrom/conllu)
+* Dependency parsing in [2] is done using [LAL-Parser](https://github.com/KhalilMrini/LAL-Parser)
+* Data split algorithm uses [PyTorch](https://pytorch.org/)
+* Tokenisers are trained using [sentencepiece](https://github.com/google/sentencepiece)
+* Translation systems are trained with [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
+* Evaluating translations is done with [sacreBLEU](https://github.com/mjpost/sacrebleu)
+
 ## Experiments in [1]: generalising to novel morphological forms
-### Structure
 * [run-nodalida2023.sh](run-nodalida2023.sh) includes the commands to run the experiments in [1]
 * [exp/subset-d-1m/data](exp/subset-d-1m/data) contains the 1M sentence pair dataset
 * `exp/subset-d-1m/splits/*/*/*/ids_{train,test_full}.txt.gz` contain the data splits with different compound divergences and different random initialisations
 
-### Dependencies
-* Data is from the [Tatoeba Challenge data release](https://github.com/Helsinki-NLP/Tatoeba-Challenge) (eng-fin set)
-* Data filtering is done using [OpusFilter](https://github.com/Helsinki-NLP/OpusFilter)
-* Morphological parsing is done using [TNPP](https://turkunlp.org/Turku-neural-parser-pipeline/), CoNLL-U format parsed using [this parser](https://github.com/EmilStenstrom/conllu)
-* Data split algorithm uses [PyTorch](https://pytorch.org/)
-* Tokenisers are trained using [sentencepiece](https://github.com/google/sentencepiece)
-* Translation systems are trained with [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
-* Evaluating translations is done with [sacreBLEU](https://github.com/mjpost/sacrebleu)
 
 ## Experiments in [2]: generalising to novel dependency relations
-### Structure
 * [run-genbench2023.sh](run-genbench2023.sh) includes the commands to run the experiments in [2]
-
-### Dependencies
-* Data is from the [Europarl parallel corpus](https://opus.nlpl.eu/Europarl.php)
-* Data filtering is done using [OpusFilter](https://github.com/Helsinki-NLP/OpusFilter)
-* Dependency parsing is done using [LAL-Parser](https://github.com/KhalilMrini/LAL-Parser)
-* Data split algorithm uses [PyTorch](https://pytorch.org/)
-* Tokenisers are trained using [sentencepiece](https://github.com/google/sentencepiece)
-* Translation systems are trained with [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
-* Evaluating translations is done with [sacreBLEU](https://github.com/mjpost/sacrebleu)
+* data splits are available at https://huggingface.co/datasets/Anssi/europarl_dbca_splits
