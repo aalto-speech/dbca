@@ -1,0 +1,36 @@
+[
+{
+ "name": "BLEU",
+ "score": 26.6611,
+ "signature": "nrefs:1|bs:3000|seed:12345|case:mixed|eff:no|tok:13a|smooth:exp|version:2.3.1",
+ "confidence_mean": 26.6616,
+ "confidence_var": 0.2021,
+ "confidence": "μ = 26.6616 ± 0.2021",
+ "verbose_score": "61.9/35.3/22.6/15.0 (BP = 0.910 ratio = 0.913 hyp_len = 753684 ref_len = 825171)",
+ "nrefs": "1",
+ "bs": "3000",
+ "seed": "12345",
+ "case": "mixed",
+ "eff": "no",
+ "tok": "13a",
+ "smooth": "exp",
+ "version": "2.3.1"
+},
+{
+ "name": "chrF2++",
+ "score": 50.6492,
+ "signature": "nrefs:1|bs:3000|seed:12345|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.3.1",
+ "confidence_mean": 50.6505,
+ "confidence_var": 0.1673,
+ "confidence": "μ = 50.6505 ± 0.1673",
+ "nrefs": "1",
+ "bs": "3000",
+ "seed": "12345",
+ "case": "mixed",
+ "eff": "yes",
+ "nc": "6",
+ "nw": "2",
+ "space": "no",
+ "version": "2.3.1"
+}
+]
