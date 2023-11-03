@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 import gzip
-import argparse
-import random
 
 def filter_lines(input_file, output_file, included_lines):
-    """ read lines from input_file, output the included lines
-    to output_file """
+    """Read lines from input_file, output the included lines to output_file."""
     with gzip.open(input_file, 'rt', encoding='utf-8') as f:
         lines = [line.strip() for line in f.readlines()]
     with gzip.open(output_file, 'wt', encoding='utf-8') as f:
@@ -13,6 +10,8 @@ def filter_lines(input_file, output_file, included_lines):
             f.write(f'{sentence}\n')
 
 if __name__ == "__main__":
+    import argparse
+    import random
     parser = argparse.ArgumentParser(description='Select subcorpora from OPUS')
     parser.add_argument('--opus_id_file', type=str, required=True,
         help='file with opus ids')

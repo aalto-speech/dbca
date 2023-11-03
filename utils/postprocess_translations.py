@@ -15,9 +15,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.reference, 'r', encoding='utf-8') as f:
-        raw_refs = [line.strip() for line in f.readlines()]
+        raw_refs = [line.strip() for line in f.readlines() if line.strip()]
     with open(args.hypothesis, 'r', encoding='utf-8') as f:
-        raw_hyps = [line.strip() for line in f.readlines()]
+        raw_hyps = [line.strip() for line in f.readlines() if line.strip()]
 
     assert len(raw_refs) == len(raw_hyps)
     refs = []

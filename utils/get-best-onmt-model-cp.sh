@@ -19,9 +19,13 @@ fi
 
 if grep -q "Best model found at step" $onmt_log_file; then
     best_model_cp=$(grep "Best model found at step" $onmt_log_file | awk '{print $NF}')
-else
+elif 'Model is improving' $onmt_log_file; then
     best_model_cp=$(grep -A 1 'Model is improving' $onmt_log_file | grep 'Saving checkpoint' \
         | awk '{print $NF}' | tail -n 1 | grep -oP '(?<=model_step_).*?(?=.pt)')
+else
+    best_model_cp=$(grep -A 1 'Saving checkpoint' $onmt_log_file \
+        | awk '{print $NF}' | tail -n 1 | grep -oP '(?<=model_step_).*?(?=.pt)')
+    echo "Warning: using last model checkpoint since there is no validation."
 fi
 echo "Best model step: $best_model_cp"
 

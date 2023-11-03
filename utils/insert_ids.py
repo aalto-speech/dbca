@@ -10,7 +10,15 @@ parser.add_argument('--output_sents', type=str)
 args = parser.parse_args()
 
 # Insert line number as TNPP (###C:) comment before each line
-with gzip.open(args.input_sents, 'rt', encoding='utf-8') as in_sents_file:
+
+if args.input_sents.endswith('.gz'):
+    open_function = gzip.open
+    open_mode = 'rt'
+else:
+    open_function = open
+    open_mode = 'r'
+
+with open_function(args.input_sents, open_mode, encoding='utf-8') as in_sents_file:
     in_sents = [line.strip() for line in in_sents_file.readlines()]
 
 if args.line2id_file is not None:
