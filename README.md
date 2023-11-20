@@ -3,11 +3,11 @@
 Experiments utilising the *distribution-based compositionality assessment* (DBCA) framework to split natural language corpora into training and test sets in such a way that the test sets require systematic compositional generalisation capacity.
 
 This repository contains experiments described in the two papers:
-- [1] Moisio, Creutz, and Kurimo, "[Evaluating Morphological Generalisation in Machine Translation by Distribution-Based Compositionality Assessment](https://aclanthology.org/2023.nodalida-1.75/)", in *Proceedings of the 24th Nordic Conference on Computational Linguistics (NoDaLiDa)*, pp. 738–751, 2023.
-- [2] Moisio, Creutz, and Kurimo, “On Using Distribution-Based Compositionality Assessment to Evaluate Compositional Generalisation in Machine Translation,” To appear at the GenBench workshop at EMNLP, 2023.
+- [1] Moisio, Creutz, and Kurimo, [Evaluating Morphological Generalisation in Machine Translation by Distribution-Based Compositionality Assessment](https://aclanthology.org/2023.nodalida-1.75/), in *Proceedings of the 24th Nordic Conference on Computational Linguistics (NoDaLiDa)*, pp. 738–751, 2023.
+- [2] Moisio, Creutz, and Kurimo, [On Using Distribution-Based Compositionality Assessment to Evaluate Compositional Generalisation in Machine Translation](https://arxiv.org/abs/2311.08249), To appear at the *GenBench workshop* at EMNLP, 2023.
 
 which use the DBCA framework, introduced in the paper:
-- Keysers, Schärli, Scales, Buisman, Furrer, Kashubin, Momchev, Sinopalnikov, Stafiniak, Tihon, Tsarkov, Wang, van Zee, Bousquet, "[Measuring compositional generalization: A comprehensive method on realistic data](https://iclr.cc/virtual_2020/poster_SygcCnNKwr.html)" in *International Conference on Learning Representations*, 2020.
+- Keysers, Schärli, Scales, Buisman, Furrer, Kashubin, Momchev, Sinopalnikov, Stafiniak, Tihon, Tsarkov, Wang, van Zee, Bousquet, [Measuring compositional generalization: A comprehensive method on realistic data](https://iclr.cc/virtual_2020/poster_SygcCnNKwr.html) in *International Conference on Learning Representations*, 2020.
 
 ## Instructions
 
