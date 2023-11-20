@@ -44,3 +44,4 @@ The experiments consist of the following steps:
 ## Experiments in [2]: generalising to novel dependency relations
 * [run-genbench2023.sh](run-genbench2023.sh) includes the commands to run the experiments in [2]
 * data splits are available at https://huggingface.co/datasets/Anssi/europarl_dbca_splits
+* related PR in the GenBench CBT repository: https://github.com/GenBench/genbench_cbt/pull/33
