@@ -2,7 +2,7 @@ log
 *.pkl
 *.tar.gz
 *.zip
-__init__.py
+__pycache__
 test/test-files
 
 # external tools

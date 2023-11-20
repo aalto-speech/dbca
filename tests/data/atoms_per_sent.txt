@@ -1,0 +1,4 @@
+123;auto;Case=Ill;Number=Sing
+456;talo;Case=All;Number=Sing
+789;talo;Case=All;Number=Sing;auto;Case=All;Number=Sing;auto;Number=Sing
+34;auto;Number=Sing

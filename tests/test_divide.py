@@ -1,9 +1,4 @@
-#!/usr/bin/env python
-#spellcheck-off
-"""Unittests for divide.py."""
 import unittest
-import time
-import numpy as np
 import torch
 from divide import *
 

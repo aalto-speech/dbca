@@ -1,0 +1,4 @@
+123;Case=Ill+Number=Sing
+456;Case=All+Number=Sing
+789;Case=All+Number=Sing;Case=All+Number=Sing
+34;

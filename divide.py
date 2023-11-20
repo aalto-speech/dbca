@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#spellcheck-off
 """
 Divide a corpus into training and test sets so that the atom and compound divergences
 are set to desired values. Before this script, the data has been converted to atom and
@@ -27,7 +25,7 @@ if torch.cuda.is_available():
     elif torch.cuda.device_count() == 2:
         device = torch.device("cuda:1")
     else:
-        raise ValueError("More than 2 GPUs are not supported.")
+        raise ValueError("Using more than 2 GPUs is not supported.")
 else:
     print("Using only CPU.")
     device = torch.device("cpu")
@@ -168,8 +166,7 @@ class DivideTrainTest:
 
         # 2 matrices: one for each set
         self.candidate_com_sums = torch.zeros((2, self.n_matrix_rows, self.com_dim), device=device)
-        self.candidate_atom_sums = torch.zeros((2, self.n_matrix_rows, self.atom_dim),
-                                            device=device)
+        self.candidate_atom_sums = torch.zeros((2, self.n_matrix_rows, self.atom_dim), device=device)
 
         # keep unnormalised vectors as separate variables to enable updating
         self.subset_com_freq_sum = torch.zeros((2, self.com_dim), device=device)
@@ -188,8 +185,6 @@ class DivideTrainTest:
             self._read_presplit_files(
                 load_struct(path.join(self.presplit_train_test, 'train.txt')),
                 load_struct(path.join(self.presplit_train_test, 'test.txt')))
-        else:
-            self.presplit_train_test = None
 
     def _read_presplit_files(self, train_set, test_set) -> None:
         """Read the pre-split train and test sets from files."""
@@ -218,10 +213,12 @@ class DivideTrainTest:
         print('Reading data from files...')
         self.atom_freq_matrix_full = torch.load(
             path.join(data_dir, f'atom_freqs{group_suffix}.pt'),
-            map_location=secondary_device)
+            map_location=secondary_device
+        )
         self.com_freq_matrix_full = torch.load(
             path.join(data_dir,f'compound_freqs{group_suffix}.pt'),
-            map_location=secondary_device)
+            map_location=secondary_device
+        )
         self.atom_ids = load_struct(path.join(data_dir, 'atom_ids.pkl'))
         self.com_ids = load_struct(path.join(data_dir, 'com_ids.pkl'))
         self.sent_ids = load_struct(path.join(data_dir, f'used_sent_ids{group_suffix}.txt'))
@@ -287,6 +284,12 @@ class DivideTrainTest:
         """Returns the indices of the given subset."""
         return (self.subset_indices == subset).nonzero()
 
+    def get_subset_sizes(self):
+        """Return the sizes of the train and test sets."""
+        train_size = self.get_subset_indices(TRAIN_SET).size()[0]
+        test_size = self.get_subset_indices(TEST_SET).size()[0]
+        return train_size, test_size
+
 class FromEmptySets(DivideTrainTest):
     """Divide sample set to train and test sets, starting from empty sets."""
     def __init__(self, **kwargs):
@@ -297,8 +300,9 @@ class FromEmptySets(DivideTrainTest):
         self.used_ids_mask = torch.zeros(self.n_matrix_rows, device=device)
 
         if self.presplit_train_test is None:
-            # initialise the random subsample indices
-            self.random_idxs, _, _ =  self._get_random_subsample(DISCARD_SET)
+            if self.do_subsample:
+                # initialise the random subsample indices
+                self.random_idxs, _, _ =  self._get_random_subsample(DISCARD_SET)
 
             # initialize train set with one random sample
             self._add_sample_to_set(TRAIN_SET, random.randrange(self.n_matrix_rows))
@@ -431,10 +435,6 @@ class FromEmptySets(DivideTrainTest):
         if max_iters and max_iters > self.group_size:
             max_iters = max_iters // self.group_size
 
-        best_values = {}
-        train_size = 0
-        test_size = 0
-
         def _print_iteration():
             print(f'After iteration {i+1}: Train set size {train_size}; ' \
                 + f'Test set size {test_size}. ' \
@@ -450,14 +450,12 @@ class FromEmptySets(DivideTrainTest):
             self.write_ids_to_file(
                 [self.sent_ids[ind] for ind in self.get_subset_indices(TEST_SET)], test_set_out)
 
-        print('Starting division. ' + \
-            f'Train set size: {self.get_subset_indices(TRAIN_SET).size()[0]}, ' + \
-            f'Test set size: {self.get_subset_indices(TEST_SET).size()[0]}. ' + \
-            f'Remaining samples: {select_n_samples}.')
-        print(f'Dividing {select_n_samples} samples.')
+        best_values = {}
+        train_size, test_size = self.get_subset_sizes()
+        print(f'Starting division. Train set size: {train_size}, Test set size: {test_size}. ' + \
+            f'Remaining samples to divide: {select_n_samples}.')
         for i in tqdm(range(select_n_samples)):
-            train_size = self.get_subset_indices(TRAIN_SET).size()[0]
-            test_size  = self.get_subset_indices(TEST_SET).size()[0]
+            train_size, test_size = self.get_subset_sizes()
             test_percent = test_size / (train_size + test_size)
             if test_percent > max_test_percent: # First check the size constraints
                 best_values[TRAIN_SET] = self._best_sentence(
@@ -505,7 +503,6 @@ class FromEmptySets(DivideTrainTest):
         _print_iteration()
         _save_division()
 
-
 def create_parser():
     """Create the argument parser."""
     arg_parser = argparse.ArgumentParser()
@@ -549,10 +546,7 @@ def launch_from_empty_sets(args):
         presplit_train_test=args.presplit_train_test,
     )
 
-    if args.presplit_train_test:
-        presplit = 'yes'
-    else:
-        presplit = 'no'
+    presplit = 'yes' if args.presplit_train_test else 'no'
 
     use_n_samples = int((1 - args.leave_out) * divide_train_test.n_samples) - 1
 
