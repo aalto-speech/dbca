@@ -32,7 +32,7 @@ class TestDivideFunctions(unittest.TestCase):
             chernoff_mat)
         for k in is_closes:
             self.assertTrue(k)
-        
+
         freq_matrix_norm2 = normalize_matrix(freq_matrix_norm + 3)
         chernoffs = chernoff_coef(freq_matrix_norm, freq_matrix_norm2, 0.1)
         torch.testing.assert_close(
@@ -214,8 +214,39 @@ class TestDivideTrainTest(unittest.TestCase):
         torch.testing.assert_close(com_div, torch.tensor(correct_comdiv))
 
     def test_get_subset_indices(self):
-        # TODO
-        pass
+        divide_train_test = DivideTrainTest(
+            data_dir="tests/data/prep_divide_data_example_parsed",
+        )
+        divide_train_test.subset_indices[1] = TRAIN_SET
+        divide_train_test.subset_indices[2] = TEST_SET
+        self.assertEqual(divide_train_test.get_subset_indices(TRAIN_SET), 1)
+        self.assertEqual(divide_train_test.get_subset_indices(TEST_SET), 2)
+
+    def test_get_subset_sizes(self):
+        sent_weight_file = 'tests/data/prep_divide_data_example_parsed/sent_sizes.txt'
+        with open(sent_weight_file, 'w', encoding='utf-8') as f:
+            for weight in [1,1,1,1]:
+                f.write(str(weight) + '\n')
+
+        divide_train_test = DivideTrainTest(
+            data_dir="tests/data/prep_divide_data_example_parsed",
+        )
+        divide_train_test.subset_indices[0] = TRAIN_SET
+        divide_train_test.subset_indices[1] = TRAIN_SET
+        divide_train_test.subset_indices[2] = TEST_SET
+        self.assertEqual(divide_train_test.get_subset_sizes(), tuple([2, 1]))
+
+        with open(sent_weight_file, 'w', encoding='utf-8') as f:
+            for weight in [1,2,1,1]:
+                f.write(str(weight) + '\n')
+
+        divide_train_test = DivideTrainTest(
+            data_dir="tests/data/prep_divide_data_example_parsed",
+        )
+        divide_train_test.subset_indices[0] = TRAIN_SET
+        divide_train_test.subset_indices[1] = TRAIN_SET
+        divide_train_test.subset_indices[2] = TEST_SET
+        self.assertEqual(divide_train_test.get_subset_sizes(), tuple([3, 1]))
 
 class TestFromEmptySets(unittest.TestCase):
     def __init__(self, *args, **kwargs):

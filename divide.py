@@ -222,6 +222,8 @@ class DivideTrainTest:
         self.atom_ids = load_struct(path.join(data_dir, 'atom_ids.pkl'))
         self.com_ids = load_struct(path.join(data_dir, 'com_ids.pkl'))
         self.sent_ids = load_struct(path.join(data_dir, f'used_sent_ids{group_suffix}.txt'))
+        self.sent_sizes = torch.tensor([int(x) for x in
+                                        load_struct(path.join(data_dir, 'sent_sizes.txt'))])
         self.sent_ids_inv = {sent_id: idx for idx, sent_id in enumerate(self.sent_ids)}
         print('Done reading data.')
 
@@ -286,8 +288,10 @@ class DivideTrainTest:
 
     def get_subset_sizes(self):
         """Return the sizes of the train and test sets."""
-        train_size = self.get_subset_indices(TRAIN_SET).size()[0]
-        test_size = self.get_subset_indices(TEST_SET).size()[0]
+        # train_size = self.get_subset_indices(TRAIN_SET).size()[0]
+        # test_size = self.get_subset_indices(TEST_SET).size()[0]
+        train_size = self.sent_sizes[self.get_subset_indices(TRAIN_SET)].sum()
+        test_size = self.sent_sizes[self.get_subset_indices(TEST_SET)].sum()
         return train_size, test_size
 
 class FromEmptySets(DivideTrainTest):
