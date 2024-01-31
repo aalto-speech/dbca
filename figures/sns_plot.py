@@ -124,7 +124,7 @@ def genbench():
     # print(df_chrf.to_latex())
     
     
-    langs = [['de', 'fr', 'el', 'fi']]
+    langs = [['de', 'fr'], ['el', 'fi']]
     n_rows = len(langs)
     n_cols = len(langs[0])
     sns.set_theme(style="white")
@@ -144,22 +144,35 @@ def genbench():
                 x="Compound divergence",
                 # style='seed',
                 palette='deep',
-                ax=axes[col],
+                ax=axes[row,col],
             )
-            relplot.set(title=f'Target lang: {map_langs[lang]}')
-    
+            relplot.set(title=f'Target language: {map_langs[lang]}')
+
             # set x range
-            axes[col].set_xlim([-0.25, 1.25])
+            axes[row, col].set_xlim([-0.25, 1.25])
             # set x tics
-            xlabels = ['0.0', 'Random split', '1.0']
-            axes[col].set_xticks([0.0, 0.5, 1.0])
-            fig.axes[col].set_xticklabels(xlabels)
-    
-    # remove y axis label
-    for col in [1,2,3]:
-        axes[col].set_ylabel('')
             
-    fig.set_size_inches(15, 3)
+            
+            
+
+    # remove y axis label
+    # for col in [1,2,3]:
+        # axes[col].set_ylabel('')
+
+    axes[0,1].set_ylabel('')
+    axes[1,1].set_ylabel('')
+    axes[0,0].set_xlabel('')
+    axes[0,1].set_xlabel('')
+    axes[0,0].set_xticklabels([])
+    axes[0,1].set_xticklabels([])
+    axes[1,0].set_xticks([0.0, 0.5, 1.0])
+    xlabels = ['0.0', 'Random split', '1.0']
+    axes[1,0].set_xticklabels(xlabels)
+    axes[1,1].set_xticks([0.0, 0.5, 1.0])
+    axes[1,1].set_xticklabels(xlabels)
+
+    # fig.set_size_inches(15, 3) # 1 row of 4
+    fig.set_size_inches(8, 8) # 2 rows of 2
     fig.savefig(args.output, dpi=400, bbox_inches = 'tight')
 
 if __name__ == '__main__':

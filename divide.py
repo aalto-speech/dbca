@@ -199,14 +199,22 @@ class DivideTrainTest:
         train_set = torch.tensor(train_set_idxs, device=device)
         test_set = torch.tensor(test_set_idxs, device=device)
 
-        self.subset_com_freq_sum[TRAIN_SET] = torch.sparse.sum(
-            self.com_freq_matrix.index_select(0, train_set), 0).to_dense()
-        self.subset_atom_freq_sum[TRAIN_SET] = torch.sparse.sum(
-            self.atom_freq_matrix.index_select(0, train_set), 0).to_dense()
-        self.subset_com_freq_sum[TEST_SET] = torch.sparse.sum(
-            self.com_freq_matrix.index_select(0, test_set), 0).to_dense()
-        self.subset_atom_freq_sum[TEST_SET] = torch.sparse.sum(
-            self.atom_freq_matrix.index_select(0, test_set), 0).to_dense()
+        if train_set.size()[0] == 0:
+            self.subset_com_freq_sum[TRAIN_SET] = torch.zeros(self.com_dim, device=device)
+            self.subset_atom_freq_sum[TRAIN_SET] = torch.zeros(self.atom_dim, device=device)
+        else:
+            self.subset_com_freq_sum[TRAIN_SET] = torch.sparse.sum(
+                self.com_freq_matrix.index_select(0, train_set), 0).to_dense()
+            self.subset_atom_freq_sum[TRAIN_SET] = torch.sparse.sum(
+                self.atom_freq_matrix.index_select(0, train_set), 0).to_dense()
+        if test_set.size()[0] == 0:
+            self.subset_com_freq_sum[TEST_SET] = torch.zeros(self.com_dim, device=device)
+            self.subset_atom_freq_sum[TEST_SET] = torch.zeros(self.atom_dim, device=device)
+        else:
+            self.subset_com_freq_sum[TEST_SET] = torch.sparse.sum(
+                self.com_freq_matrix.index_select(0, test_set), 0).to_dense()
+            self.subset_atom_freq_sum[TEST_SET] = torch.sparse.sum(
+                self.atom_freq_matrix.index_select(0, test_set), 0).to_dense()
 
     def _read_data(self, data_dir: str) -> None:
         group_suffix = '' if self.group_size == 1 else f'_group{self.group_size}'
