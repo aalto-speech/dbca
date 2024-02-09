@@ -203,18 +203,18 @@ class DivideTrainTest:
             self.subset_com_freq_sum[TRAIN_SET] = torch.zeros(self.com_dim, device=device)
             self.subset_atom_freq_sum[TRAIN_SET] = torch.zeros(self.atom_dim, device=device)
         else:
-            self.subset_com_freq_sum[TRAIN_SET] = torch.sparse.sum(
-                self.com_freq_matrix.index_select(0, train_set), 0).to_dense()
-            self.subset_atom_freq_sum[TRAIN_SET] = torch.sparse.sum(
-                self.atom_freq_matrix.index_select(0, train_set), 0).to_dense()
+            self.subset_com_freq_sum[TRAIN_SET] = torch.sum(
+                self.com_freq_matrix.index_select(0, train_set).to_dense(), 0)
+            self.subset_atom_freq_sum[TRAIN_SET] = torch.sum(
+                self.atom_freq_matrix.index_select(0, train_set).to_dense(), 0)
         if test_set.size()[0] == 0:
             self.subset_com_freq_sum[TEST_SET] = torch.zeros(self.com_dim, device=device)
             self.subset_atom_freq_sum[TEST_SET] = torch.zeros(self.atom_dim, device=device)
         else:
-            self.subset_com_freq_sum[TEST_SET] = torch.sparse.sum(
-                self.com_freq_matrix.index_select(0, test_set), 0).to_dense()
-            self.subset_atom_freq_sum[TEST_SET] = torch.sparse.sum(
-                self.atom_freq_matrix.index_select(0, test_set), 0).to_dense()
+            self.subset_com_freq_sum[TEST_SET] = torch.sum(
+                self.com_freq_matrix.index_select(0, test_set).to_dense(), 0)
+            self.subset_atom_freq_sum[TEST_SET] = torch.sum(
+                self.atom_freq_matrix.index_select(0, test_set).to_dense(), 0)
 
     def _read_data(self, data_dir: str) -> None:
         group_suffix = '' if self.group_size == 1 else f'_group{self.group_size}'
@@ -224,7 +224,7 @@ class DivideTrainTest:
             map_location=secondary_device
         )
         self.com_freq_matrix_full = torch.load(
-            path.join(data_dir,f'compound_freqs{group_suffix}.pt'),
+            path.join(data_dir, f'compound_freqs{group_suffix}.pt'),
             map_location=secondary_device
         )
         self.atom_ids = load_struct(path.join(data_dir, 'atom_ids.pkl'))
@@ -446,6 +446,7 @@ class FromEmptySets(DivideTrainTest):
             save_cp = save_cp // self.group_size
         if max_iters and max_iters > self.group_size:
             max_iters = max_iters // self.group_size
+
 
         def _print_iteration():
             print(f'After iteration {i+1}: Train set size {train_size}; ' \
