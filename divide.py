@@ -203,18 +203,22 @@ class DivideTrainTest:
             self.subset_com_freq_sum[TRAIN_SET] = torch.zeros(self.com_dim, device=device)
             self.subset_atom_freq_sum[TRAIN_SET] = torch.zeros(self.atom_dim, device=device)
         else:
-            self.subset_com_freq_sum[TRAIN_SET] = torch.sum(
-                self.com_freq_matrix.index_select(0, train_set).to_dense(), 0)
-            self.subset_atom_freq_sum[TRAIN_SET] = torch.sum(
-                self.atom_freq_matrix.index_select(0, train_set).to_dense(), 0)
+            self.subset_com_freq_sum[TRAIN_SET] = torch.zeros(self.com_dim, device=device)
+            self.subset_atom_freq_sum[TRAIN_SET] = torch.zeros(self.atom_dim, device=device)
+            for idx in tqdm(train_set):
+                self.subset_com_freq_sum[TRAIN_SET] += self.com_freq_matrix[idx].to_dense()
+                self.subset_atom_freq_sum[TRAIN_SET] += self.atom_freq_matrix[idx].to_dense()
+
         if test_set.size()[0] == 0:
             self.subset_com_freq_sum[TEST_SET] = torch.zeros(self.com_dim, device=device)
             self.subset_atom_freq_sum[TEST_SET] = torch.zeros(self.atom_dim, device=device)
         else:
-            self.subset_com_freq_sum[TEST_SET] = torch.sum(
-                self.com_freq_matrix.index_select(0, test_set).to_dense(), 0)
-            self.subset_atom_freq_sum[TEST_SET] = torch.sum(
-                self.atom_freq_matrix.index_select(0, test_set).to_dense(), 0)
+            self.subset_com_freq_sum[TEST_SET] = torch.zeros(self.com_dim, device=device)
+            self.subset_atom_freq_sum[TEST_SET] = torch.zeros(self.atom_dim, device=device)
+            for idx in tqdm(test_set):
+                self.subset_com_freq_sum[TEST_SET] += self.com_freq_matrix[idx].to_dense()
+                self.subset_atom_freq_sum[TEST_SET] += self.atom_freq_matrix[idx].to_dense()
+        print('Done reading pre-split train and test sets.')
 
     def _read_data(self, data_dir: str) -> None:
         group_suffix = '' if self.group_size == 1 else f'_group{self.group_size}'
@@ -230,8 +234,12 @@ class DivideTrainTest:
         self.atom_ids = load_struct(path.join(data_dir, 'atom_ids.pkl'))
         self.com_ids = load_struct(path.join(data_dir, 'com_ids.pkl'))
         self.sent_ids = load_struct(path.join(data_dir, f'used_sent_ids{group_suffix}.txt'))
-        self.sent_sizes = torch.tensor([int(x) for x in
-                                        load_struct(path.join(data_dir, 'sent_sizes.txt'))])
+        # check if sile path.join(data_dir, 'sent_sizes.txt') exists
+        if path.isfile(path.join(data_dir, 'sent_sizes.txt')):
+            self.sent_sizes = torch.tensor([int(x) for x in
+                                            load_struct(path.join(data_dir, 'sent_sizes.txt'))])
+        else:
+            self.sent_sizes = torch.ones(len(self.sent_ids))
         self.sent_ids_inv = {sent_id: idx for idx, sent_id in enumerate(self.sent_ids)}
         print('Done reading data.')
 
@@ -318,10 +326,10 @@ class FromEmptySets(DivideTrainTest):
 
             # initialize train set with one random sample
             self._add_sample_to_set(TRAIN_SET, random.randrange(self.n_matrix_rows))
-
-            print('Initialisation done. Initialised the train set with one random sentence.')
+            print('Initialised the train set with one random sentence.')
         else:
             self._subsample(DISCARD_SET, [TRAIN_SET, TEST_SET])
+        print('Initialisation done.')
 
     def _get_random_subsample(self, subset_id):
         """Take a random subsample of the sentences in the given subset."""
@@ -465,7 +473,7 @@ class FromEmptySets(DivideTrainTest):
 
         best_values = {}
         train_size, test_size = self.get_subset_sizes()
-        print(f'Starting division. Train set size: {train_size}, Test set size: {test_size}. ' + \
+        print(f'Starting division. Train set size: {int(train_size)}, Test set size: {int(test_size)}. ' + \
             f'Remaining samples to divide: {select_n_samples}.')
         for i in tqdm(range(select_n_samples)):
             train_size, test_size = self.get_subset_sizes()
@@ -491,7 +499,7 @@ class FromEmptySets(DivideTrainTest):
             selected_idx = best_values[selected_set]['idx']
             self._add_sample_to_set(selected_set, selected_idx)
 
-            if i % move_a_sample_iter == 0 and move_a_sample_iter > 0 and i > 10:
+            if i % move_a_sample_iter == 0 and move_a_sample_iter > 0 and train_size > 1 and test_size > 1:
                 self.random_idxs, random_atom, random_com = self._get_random_subsample(TRAIN_SET)
                 self._move_a_sample(TRAIN_SET, TEST_SET, random_atom, random_com)
                 self.random_idxs, random_atom, random_com = self._get_random_subsample(TEST_SET)
@@ -599,6 +607,11 @@ def launch_from_empty_sets(args):
 
 def main():
     args = create_parser().parse_args()
+
+    print('Args:')
+    for arg in vars(args):
+        print(f'\t{arg}: {getattr(args, arg)}')
+
     random.seed(args.random_seed)
     launch_from_empty_sets(args)
 
